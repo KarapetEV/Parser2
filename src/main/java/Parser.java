@@ -1,10 +1,13 @@
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.BufferedReader;
+
 import java.io.BufferedWriter;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URL;
@@ -17,6 +20,11 @@ public class Parser {
 
     private static String baseUrl = "http://fcpir.ru/participation_in_program/contracts/14.598.11.0098?PAGEN_1=";
     private static List<String> projectLinks = new ArrayList<String>();
+    private static List<String> results = new ArrayList<String>();
+    private static Workbook wb = new HSSFWorkbook();
+    private static CellStyle style = wb.createCellStyle();
+    private static Font font = wb.createFont();
+    private static int rowNumber = 0;
 
     private static Document getPage(String url) throws IOException {
         Document page = Jsoup.parse(new URL(url), 3000);
@@ -33,31 +41,27 @@ public class Parser {
         throw new Exception("Can't find the project number");
     }
 
-    private static void output(String projectNum, String stage) throws IOException {
-        BufferedWriter writer = new BufferedWriter(new FileWriter("c:\\lessons\\4.txt", true));
-        writer.write(projectNum + "\t" + stage);
-        writer.newLine();
-        writer.close();
-    }
-
-    private static void parseStages() throws Exception {
+    private static List<String> parseStages() throws Exception {
         for (String url: projectLinks) {
             Document page = Jsoup.parse(new URL(url), 5000);
             Elements tr = page.select("tr[class=tr-hr-dashed]");
             String etap = "";
             String result = "";
+            String outLine = null;
             for (Element el : tr) {
                 etap = el.select("td").first().text();
                 Elements aElements = el.select("a[class=panel-some-doc preview]");
                 String span = el.getElementsByTag("span").first().text().substring(2);
                 if (aElements.size() == 0 && !span.equals("Этап в работе")) {
-                    result = result + " " + etap;
+                    result = result + "," + etap;
                 }
             }
             if (!result.equals("")) {
-                output(projectNum(page), result.trim());
+                outLine = projectNum(page)+result;
+                results.add(outLine);
             }
         }
+        return results;
     }
 
     private static void getLinks(Document page) {
@@ -76,18 +80,64 @@ public class Parser {
         return pageNum;
     }
 
+    private static Workbook output(String[] lines) throws IOException {
+        Sheet sheet;
+        try {
+            sheet = wb.createSheet("Косяки");
+        } catch (IllegalArgumentException e) {
+            sheet = wb.getSheetAt(0);
+        }
+
+        style.setBorderRight(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderTop(BorderStyle.THIN);
+
+
+        font.setFontName("Times New Roman");
+
+        style.setFont(font);
+
+        Row row;
+        if (rowNumber == 0) {
+            row = sheet.createRow(0);
+        } else {
+            row = sheet.createRow(rowNumber);
+        }
+        Cell cell;
+        for (int i = 0; i < lines.length; i++) {
+            cell = row.createCell(i);
+            cell.setCellValue(lines[i]);
+            cell.setCellStyle(style);
+            sheet.autoSizeColumn(i);
+        }
+        rowNumber++;
+        return wb;
+    }
+
     public static void main(String[] args) throws Exception {
         long start = System.currentTimeMillis();
         Document page = getPage(baseUrl);
         String url = "";
         Element pagination = page.select("div[class=pagination]").first();
         int num = getNumberOfPages(pagination);
-        for (int i = 1; i <= num; i++) {
+        for (int i = 9; i <= 10; i++) {
             url = baseUrl + i;
             page = getPage(url);
             getLinks(page);
             parseStages();
             projectLinks.clear();
+            for (String line: results) {
+                String[] lines = line.split(",");
+                output(lines);
+            }
+            System.out.println(i);
+        }
+        if (wb.getNumberOfSheets() != 0) {
+            FileOutputStream fos = new FileOutputStream("c:\\lessons\\new.xls");
+            wb.write(fos);
+            fos.close();
+            wb.close();
         }
         long stop = System.currentTimeMillis();
         getTime(stop - start);
