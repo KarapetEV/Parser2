@@ -24,10 +24,10 @@
   </component>
   <component name="ProjectId" id="1Q2eZZxO6AerzDBOBKOIRgZ30uy" />
   <component name="PropertiesComponent">
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../JavaExcel" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../java_libs/poi-4.1.0/poi-4.1.0.jar!/" />
     <property name="project.structure.last.edited" value="Libraries" />
-    <property name="project.structure.proportion" value="0.0" />
-    <property name="project.structure.side.proportion" value="0.0" />
+    <property name="project.structure.proportion" value="0.15" />
+    <property name="project.structure.side.proportion" value="0.2045977" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
