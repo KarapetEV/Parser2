@@ -5,12 +5,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-
-import java.io.BufferedWriter;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -27,7 +23,7 @@ public class Parser {
     private static int rowNumber = 0;
 
     private static Document getPage(String url) throws IOException {
-        Document page = Jsoup.parse(new URL(url), 3000);
+        Document page = Jsoup.connect(url).timeout(0).get();
         return page;
     }
 
@@ -43,7 +39,7 @@ public class Parser {
 
     private static List<String> parseStages() throws Exception {
         for (String url: projectLinks) {
-            Document page = Jsoup.parse(new URL(url), 5000);
+            Document page = Jsoup.connect(url).timeout(0).get();
             Elements tr = page.select("tr[class=tr-hr-dashed]");
             String etap = "";
             String result = "";
@@ -53,12 +49,12 @@ public class Parser {
                 Elements aElements = el.select("a[class=panel-some-doc preview]");
                 String span = el.getElementsByTag("span").first().text().substring(2);
                 if (aElements.size() == 0 && !span.equals("Этап в работе")) {
-                    result = result + "," + etap;
+                    result = etap;
+                    if (!result.equals("")) {
+                        outLine = projectNum(page) + "," + result;
+                        results.add(outLine);
+                    }
                 }
-            }
-            if (!result.equals("")) {
-                outLine = projectNum(page)+result;
-                results.add(outLine);
             }
         }
         return results;
@@ -80,7 +76,7 @@ public class Parser {
         return pageNum;
     }
 
-    private static Workbook output(String[] lines) throws IOException {
+    private static Workbook output(String[] lines) {
         Sheet sheet;
         try {
             sheet = wb.createSheet("Косяки");
@@ -92,7 +88,6 @@ public class Parser {
         style.setBorderBottom(BorderStyle.THIN);
         style.setBorderLeft(BorderStyle.THIN);
         style.setBorderTop(BorderStyle.THIN);
-
 
         font.setFontName("Times New Roman");
 
@@ -117,28 +112,31 @@ public class Parser {
 
     public static void main(String[] args) throws Exception {
         long start = System.currentTimeMillis();
+        System.out.println("Начался парсинг сайта и сбор данных по отсутствующим файлам.");
         Document page = getPage(baseUrl);
         String url = "";
         Element pagination = page.select("div[class=pagination]").first();
         int num = getNumberOfPages(pagination);
-        for (int i = 9; i <= 10; i++) {
+        for (int i = 1; i <= num; i++) {
+            System.out.print("Страница: " + i + "\r");
             url = baseUrl + i;
             page = getPage(url);
             getLinks(page);
             parseStages();
             projectLinks.clear();
-            for (String line: results) {
-                String[] lines = line.split(",");
-                output(lines);
-            }
-            System.out.println(i);
         }
+        for (String line: results) {
+            String[] lines = line.split(",");
+            output(lines);
+        }
+        System.out.println("Началась выгрузка в Excel.");
+        FileOutputStream fos = new FileOutputStream("c:\\lessons\\my.xls");
         if (wb.getNumberOfSheets() != 0) {
-            FileOutputStream fos = new FileOutputStream("c:\\lessons\\new.xls");
             wb.write(fos);
             fos.close();
             wb.close();
         }
+        System.out.println("Выгрузка в Excel завершена!");
         long stop = System.currentTimeMillis();
         getTime(stop - start);
     }
@@ -148,6 +146,6 @@ public class Parser {
         int msc = (int) time - sec*1000;
         int min = sec / 60;
         sec = sec - min*60;
-        System.out.println("Время выполнения: " + min + " минут " + sec + " секунд " + msc + " миллисекунд");
+        System.out.println("Время выполнения программы: " + min + " минут " + sec + " секунд " + msc + " миллисекунд");
     }
 }
